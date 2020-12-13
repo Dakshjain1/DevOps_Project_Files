@@ -2,7 +2,7 @@
 
 ### **Step 1**
 
-Run the command to run the Terraform code to create 2 Roles, 2 Policies, 2 Instance Profiles and a VPC
+Command to run the Terraform code to create 2 Roles, 2 Policies, 2 Instance Profiles and a VPC  -  ```vpc_ec2role.tf``` [works on this file]
 ```
 terraform apply
 ```
