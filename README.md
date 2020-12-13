@@ -10,8 +10,8 @@ terraform apply
 ### **Step 2**
 
 Go inside the ```playbook_k8sMultiNodeCluster``` folder and add 2 files
-1. Copy the .pem file downloaded from AWS as it is. This will be used to configure the EC2 Instances
-2. Create an Ansible Vault to store the AWS Secret Key & Access Key in a secure fashion using the command:
+1. Copy the ```.pem file``` downloaded from AWS as it is. This will be used to configure the EC2 Instances
+2. Create an **Ansible Vault** to store the **AWS Secret Key & Access Key** in a secure fashion using the command:
 ```
 ansible-vault create credentials.yml
 
@@ -22,7 +22,7 @@ Then you can run the playbook using the command
 ```
 ansible-playbook ec2.yml --ask-vault-pass
 ```
-#### This will automatically call the role as well and complete the setting up of Kubernetes Multi-node Cluster on AWS Cloud with 1 Master node & 2 Worker nodes.
+#### This will automatically call the role and completely set up the Kubernetes Multi-node Cluster on AWS Cloud with 1 Master node & 2 Worker nodes.
 
 ### **Step 3**
 
