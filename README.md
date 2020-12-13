@@ -1,1 +1,3 @@
 # DevOps_Project_Files
+
+1. run the terraform file to create vpc ........
