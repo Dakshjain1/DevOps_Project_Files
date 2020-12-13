@@ -1,0 +1,68 @@
+---
+# tasks file for k8s-multinodecluster
+
+- name: Install docker, git, iproute-tc
+  package:
+          name:  "{{ tool }}"
+          state: present
+  vars:
+          tool:
+                  - docker
+                  - git
+                  - iproute-tc
+                 
+- name: change docker driver
+  copy:
+          src: daemon.json
+          dest: /etc/docker/daemon.json
+
+- name: Docker service
+  service:
+          name: docker
+          state: started
+          enabled: yes
+
+- name: copy k8s repo
+  copy:
+          src: kubernetes.repo
+          dest: /etc/yum.repos.d/kubernetes.repo
+
+- name: install kubelet kubectl kubeadm
+  yum:
+          name: "{{ packages }}"
+          state: latest
+          disable_excludes: all
+          exclude: kubernetes
+  vars:
+          packages:
+                  - kubelet
+                  - kubeadm
+                  - kubectl
+                  
+- name: iptables
+  sysctl:
+          name: "net.bridge.bridge-nf-call-ip6tables"
+          value: "1"
+          sysctl_set: yes
+          state: present
+          reload: yes
+
+- name: iptables
+  sysctl:
+          name: "net.bridge.bridge-nf-call-iptables"
+          value: "1"
+          sysctl_set: yes
+          state: present
+          reload: yes
+
+- name: kubelet service
+  service:
+          name: kubelet
+          state: started
+          enabled: yes
+
+- include_tasks: Master-conf.yml
+  when: inventory_hostname in groups['master']
+
+- include_tasks: Worker-conf.yml
+  when: inventory_hostname in groups['worker']

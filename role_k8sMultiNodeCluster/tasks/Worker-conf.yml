@@ -1,0 +1,8 @@
+- name: get the token from the master
+  debug:
+          msg: "{{ hostvars['dummy']['command'] }}"
+  register: token
+
+- name: run the command
+  shell:
+          cmd: "{{ token.msg.msg }}"
