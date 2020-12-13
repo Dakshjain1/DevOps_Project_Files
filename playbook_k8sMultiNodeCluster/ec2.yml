@@ -1,0 +1,189 @@
+- hosts: localhost
+  gather_facts: no
+  vars_files:
+          - mycred.yml
+          - /root/DevOps_Project/vpc_aws_tf/tf_subnet_id_value.yml
+  vars:
+          count: 2
+          region: ap-south-1
+          type: t3.small
+
+  tasks:
+
+          - name: installing python
+            package:
+                    name: python36
+                    state: present
+
+          - name: installing boto3
+            pip:
+                    name: boto3
+                    state: present
+
+          - name: create security group for master
+            ec2_group:
+                    name: "kubectl-master"
+                    description: The kubernetes master SG
+                    region: "{{ region }}"
+                    vpc_id: "{{ vpcid }}"
+                    aws_access_key: "{{ access_key }}"
+                    aws_secret_key: "{{ secret_key }}"
+                    rules:
+                            - proto: tcp
+                              from_port: "6443"
+                              to_port: "6443"
+                              cidr_ip: 0.0.0.0/0
+                            - proto: tcp
+                              from_port: "22"
+                              to_port: "22"
+                              cidr_ip: 0.0.0.0/0
+                            - proto: tcp
+                              from_port: "10251"
+                              to_port: "10251"
+                              cidr_ip: 0.0.0.0/0
+                            - proto: tcp
+                              from_port: "10250"
+                              to_port: "10250"
+                              cidr_ip: 0.0.0.0/0
+                            - proto: tcp
+                              from_port: "2379"
+                              to_port: "2379"
+                              cidr_ip: 0.0.0.0/0
+                            - proto: tcp
+                              from_port: "10252"
+                              to_port: "10252"
+                              cidr_ip: 0.0.0.0/0
+                    rules_egress:
+                            - proto: all
+                              cidr_ip: 0.0.0.0/0
+         
+          - name: create security group for worker
+            ec2_group:
+                    name: "kubectl-worker"
+                    description: The kubernetes worker SG
+                    region: "{{ region }}"
+                    vpc_id: "{{ vpcid }}"
+                    aws_access_key: "{{ access_key }}"
+                    aws_secret_key: "{{ secret_key }}"
+                    rules:
+                            - proto: tcp
+                              from_port: "31003"
+                              to_port: "31003"
+                              cidr_ip: 0.0.0.0/0
+                            - proto: tcp
+                              from_port: "31002"
+                              to_port: "31002"
+                              cidr_ip: 0.0.0.0/0
+                            - proto: tcp
+                              from_port: "22"
+                              to_port: "22"
+                              cidr_ip: 0.0.0.0/0
+                            - proto: tcp
+                              from_port: "10250"
+                              to_port: "10250"
+                              cidr_ip: 0.0.0.0/0
+                            - proto: tcp
+                              from_port: "30007"
+                              to_port: "30007"
+                              cidr_ip: 0.0.0.0/0
+                    rules_egress:
+                            - proto: all
+                              cidr_ip: 0.0.0.0/0
+                             
+          - name: launching ec2 instance for master node
+            ec2:
+                    key_name: key1
+                    instance_type: "{{ type }}"
+                    image: ami-0e306788ff2473ccb
+                    wait: true
+                    group: "kubectl-master"
+                    count: "1"
+                    vpc_subnet_id: "{{ subnet }}"
+                    assign_public_ip: yes
+                    region: "{{ region }}"
+                    instance_profile_name: k8s-cluster-iam-master-profile
+                    state: present
+                    aws_access_key: "{{ access_key }}"
+                    aws_secret_key: "{{ secret_key }}"
+                    instance_tags:
+                            Name: Master
+                            kubernetes.io/cluster/kubernetes: owned
+            register: ec2_master
+
+          - name: launching ec2 instance for worker nodes
+            ec2:
+                    key_name: key1
+                    instance_type: "{{ type }}"
+                    image: ami-0e306788ff2473ccb
+                    wait: true
+                    group: "kubectl-worker"
+                    count: "{{ count }}"
+                    vpc_subnet_id: "{{ subnet }}"
+                    assign_public_ip: yes
+                    region: "{{ region }}"
+                    instance_profile_name: k8s-cluster-iam-worker-profile 
+                    state: present
+                    aws_access_key: "{{ access_key }}"
+                    aws_secret_key: "{{ secret_key }}"
+                    instance_tags:
+                            Name: Worker
+                            kubernetes.io/cluster/kubernetes: owned
+            register: ec2_worker
+
+          - name: Add master node to host group
+            add_host: 
+                    hostname: "{{ item.public_ip }}"
+                    groupname: master
+            loop: "{{ ec2_master.instances }}"
+
+          - name: Add worker nodes to host group
+            add_host:
+                    hostname: "{{ item.public_ip }}"
+                    groupname: worker
+            loop: "{{ ec2_worker.instances }}"
+                    
+          - name: Wait for SSH to come up
+            wait_for: 
+                    host: "{{ item.public_dns_name }}" 
+                    port: 22  
+                    state: started
+            loop: "{{ ec2_worker.instances }}"
+
+          - name: Wait for SSH to come up
+            wait_for:
+                    host: "{{ item.public_dns_name }}"
+                    port: 22
+                    state: started
+            loop: "{{ ec2_master.instances }}"
+
+
+- hosts: master
+  gather_facts: no
+  tasks:
+          - command: curl http://ipv4.icanhazip.com
+            register: ip
+          - debug:
+                  var:  ip.stdout
+        
+          - name: Call the role
+            include_role:
+                    name: k8s-multinodecluster
+            vars:
+                    master_ip: "{{ ip.stdout }}"
+
+- hosts: worker
+  gather_facts: no
+  tasks:
+          - command: curl http://ipv4.icanhazip.com
+            register: ip
+          - debug:
+                  var: ip.stdout
+          - name: Call the role
+            include_role:
+                  name: k8s-multinodecluster
+  
+- hosts: localhost
+  gather_facts: no
+  tasks:
+          - shell:
+                  cmd: mv /etc/ansible/roles/k8s-multinodecluster/tasks/config /root/.kube/

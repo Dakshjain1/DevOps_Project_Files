@@ -1,0 +1,43 @@
+- hosts: localhost
+  gather_facts: no
+  vars_files:
+          - mycred.yml
+
+  vars:
+          region: ap-south-1
+
+  tasks:
+          - name: get the ids of the EC2 Instance - worker nodes
+            command: "/usr/local/bin/aws ec2 describe-instances --query Reservations[*].Instances[*].['InstanceId'] --filters 'Name=tag:Name,Values=Worker'  --output text" 
+            register: worker_id
+
+          - debug:
+                  msg: "{{ worker_id.stdout.split('\n') }}"
+            register: ids
+
+
+          - name: get the id of the ELB for website 
+            shell: "/usr/local/bin/aws  elb describe-load-balancers | jq -r '.LoadBalancerDescriptions | [.[] | select(.ListenerDescriptions[].Listener.LoadBalancerPort==80) | .LoadBalancerName] | .[]'"
+            register: elb_website_id
+
+          - debug:
+                  msg: "{{ elb_website_id.stdout.split('\n') }}"
+          
+          - name: get the DNS Name of the Load Balancer for website
+            shell: "/usr/local/bin/aws  elb describe-load-balancers | /usr/bin/jq -r '.LoadBalancerDescriptions | [.[] | select(.ListenerDescriptions[].Listener.LoadBalancerPort==80) | .DNSName] | .[]'"
+            register: dns_website
+
+          - debug:
+                  msg: "Website working on -> {{ dns_website.stdout }}/wp.html"
+
+          - name: add worker nodes to AWS ELB Website
+            local_action: ec2_elb
+            args:
+                    aws_access_key: "{{ access_key }}"
+                    aws_secret_key: "{{ secret_key }}"
+                    instance_id: "{{ item }}"
+                    ec2_elbs: "{{ elb_website_id.stdout }}"
+                    state: present
+                    region: "{{ region }}"
+            loop: "{{ ids.msg }}"
+            ignore_errors: yes
