@@ -56,7 +56,8 @@ kubectl port-forward --namespace default service/prometheus-kube-prometheus-prom
 
 Now we need to setup the e-mail notification in Grafana server. This will e-mail to the admin whenever an alert notifies.
 
-To do this we need to make changes in the ```grafana.ini``` file
+To do this we need to make changes in the ```grafana.ini``` file.
+By default, the grafana.ini file in RHEL8 is present in /var/lib/grafana folder.
 
 ```
 #################################### SMTP / Emailing ##########################
