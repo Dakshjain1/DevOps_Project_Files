@@ -1,31 +1,68 @@
-Role Name
+Kubernetes Multi Node Cluster 
 =========
 
-A brief description of the role goes here.
+A role to create a Kubernetes Multi Node Cluster - with 1 Master node & mutiple Worker nodes (by default 2, but scalable). The role can be used to setup the cluster on AWS Cloud.
 
 Requirements
 ------------
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+If you already have EC2 instances created (master and worker instances) then you need to manually create the inventory - 
+`
+[master]
+IP 1
+[worker]
+IP 2
+IP 3
+`
+Meaning that 1 IP (of master) should have hostgroup name explicitly setup as "master" and rest IPs should have hostgroup name explicitly setup as "worker".
+
+* If you want to even create the EC2 instances using ansible playbook automatically then you can use this playbook that I have created -
+[AWS EC2 Instance Playbook](https://github.com/Dakshjain1/DevOps_Project_Files/tree/main/playbook_k8sMultiNodeCluster)
+Go through the [README.md](https://github.com/Dakshjain1/DevOps_Project_Files/blob/main/README.md) of this repository for the requirements to run the `ec2.yml` file.
+You will need to specify your AWS Access Key & AWS Secret Key.
 
 Role Variables
 --------------
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+This role doesn't require any variable to be specified by the user.
 
 Dependencies
 ------------
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+This is a stand alone role, that will work as it is without any dependency on other Galaxy roles.
 
 Example Playbook
 ----------------
 
 Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+```
+- hosts: master
+  gather_facts: no
+  tasks:
+          - command: curl http://ipv4.icanhazip.com
+            register: ip
+          - debug:
+                  var:  ip.stdout
+
+          - name: Call the role
+            include_role:
+                    name: Dakshjain1.Ansible-Galaxy_K8SMultiNodeCluster_Role
+            vars:
+                    master_ip: "{{ ip.stdout }}"
+
+- hosts: worker
+  gather_facts: no
+  tasks:
+          - command: curl http://ipv4.icanhazip.com
+            register: ip
+          - debug:
+                  var: ip.stdout
+          - name: Call the role
+            include_role:
+                  name: Dakshjain1.Ansible-Galaxy_K8SMultiNodeCluster_Role
+
+```
 
 License
 -------
@@ -35,4 +72,9 @@ BSD
 Author Information
 ------------------
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+This Role is created by Daksh Jain.
+For any queries, suggestions, corrections please contact here:
+
+[![Daksh Jain LinkedIn](https://github.com/Dakshjain1/photo/raw/master/linkedin.png)](https://www.linkedin.com/in/dakshjain09/)  [![Daksh Jain Medium](https://github.com/Dakshjain1/photo/raw/master/medium.png)](https://daksh-jain00.medium.com/)
+
+I am always open to learn from the best minds !! :)
