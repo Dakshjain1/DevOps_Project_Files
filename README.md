@@ -1,4 +1,5 @@
 # DevOps_Project_Files
+![DevOps Project Design Architecture](https://github.com/Dakshjain1/DevOps_Project_Files/raw/main/Devops%20Project%20Arch%20Diagram.PNG)
 
 ### **Step 1**
 
